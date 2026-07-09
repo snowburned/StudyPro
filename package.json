@@ -1,0 +1,14 @@
+{
+  "name": "studypro",
+  "version": "1.0.0",
+  "private": true,
+  "description": "StudyPro — organizador de estudos para o ENEM",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/postgres": "^0.10.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
