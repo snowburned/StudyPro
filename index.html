@@ -7,6 +7,14 @@
   <meta name="description" content="StudyPro — organize seus estudos para o ENEM por matéria, módulo e conteúdo, com progresso salvo automaticamente." />
 
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#09090B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="StudyPro" />
 
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -36,7 +44,9 @@
 </head>
 <body class="font-sans antialiased">
 
-  <div id="app" class="flex h-screen overflow-hidden">
+  <div id="login-root"></div>
+
+  <div id="app" class="flex h-screen overflow-hidden" style="display:none">
 
     <!-- Backdrop mobile -->
     <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-black/60 z-30 lg:hidden"></div>

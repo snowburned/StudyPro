@@ -12,6 +12,9 @@
   const LS_STREAK = "studypro_streak_v1";
   const LS_UI = "studypro_ui_v1";
   const LS_LAST_ACCESS = "studypro_last_access_v1";
+  const LS_USER = "studypro_user_v1";
+
+  const AVATAR_COLORS = ["#7C3AED", "#A855F7", "#22C55E", "#F59E0B", "#EC4899", "#3B82F6", "#EF4444", "#14B8A6"];
 
   const SUBJECT_ICONS = {
     "Sigma": "sigma", "Atom": "atom", "FlaskConical": "flask-conical", "Dna": "dna",
@@ -28,6 +31,8 @@
     expanded: new Set(),
     charts: { pie: null, bar: null },
     sidebarOpen: false,
+    deferredInstallPrompt: null,
+    user: null,
   };
 
   /* ----------------------------- Utilidades ------------------------------ */
@@ -71,6 +76,35 @@
     wrap.appendChild(el);
     if (window.lucide) lucide.createIcons();
     setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateY(8px)"; el.style.transition = "all .3s ease"; setTimeout(() => el.remove(), 320); }, 2600);
+  }
+
+  /* --------------------------- Perfil (login local) ----------------------------- */
+  function loadUser() {
+    try {
+      const raw = localStorage.getItem(LS_USER);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* noop */ }
+    return null;
+  }
+
+  function saveUser(user) {
+    try { localStorage.setItem(LS_USER, JSON.stringify(user)); }
+    catch (e) { console.warn("Falha ao salvar perfil:", e); }
+  }
+
+  function logoutUser() {
+    localStorage.removeItem(LS_USER);
+    state.user = null;
+    state.view = "dashboard";
+    document.getElementById("app").style.display = "none";
+    renderLoginScreen();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function initials(name) {
+    const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("");
   }
 
   /* --------------------------- Persistência ------------------------------ */
@@ -188,6 +222,83 @@
 
   /* ------------------------------ Renderização ----------------------------- */
 
+  /* ------------------------------ Tela de login ------------------------------ */
+  function renderLoginScreen() {
+    let selectedColor = AVATAR_COLORS[0];
+    const root = document.getElementById("login-root");
+    root.innerHTML = `
+      <div class="login-shell fade-in">
+        <div class="glass login-card rounded-3xl pop">
+          <div class="flex flex-col items-center text-center mb-7">
+            <img src="favicon.svg" alt="StudyPro" class="w-14 h-14 rounded-2xl mb-4" />
+            <h1 class="text-xl font-extrabold brand-gradient-text">StudyPro</h1>
+            <p class="text-xs text-zinc-500 mt-1">Melhore o seu estudo</p>
+          </div>
+
+          <label class="text-xs font-semibold text-zinc-400 mb-2 block">Como podemos te chamar?</label>
+          <input id="login-name-input" type="text" maxlength="30" placeholder="Digite seu nome ou apelido"
+            class="input-search w-full rounded-xl px-4 py-3 text-sm mb-5" autocomplete="off" />
+
+          <label class="text-xs font-semibold text-zinc-400 mb-3 block">Escolha uma cor para seu avatar</label>
+          <div id="avatar-swatches" class="flex items-center gap-3 mb-7 flex-wrap">
+            ${AVATAR_COLORS.map((c, i) => `
+              <div class="avatar-swatch ${i === 0 ? "selected" : ""}" data-color="${c}" style="background:${c}"></div>
+            `).join("")}
+          </div>
+
+          <button id="login-submit" class="btn-primary rounded-xl px-4 py-3 text-sm w-full flex items-center justify-center gap-2" disabled style="opacity:0.5">
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            Começar a estudar
+          </button>
+          <p class="text-[11px] text-zinc-600 text-center mt-4">Seus dados ficam salvos apenas neste navegador.</p>
+        </div>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+
+    const nameInput = document.getElementById("login-name-input");
+    const submitBtn = document.getElementById("login-submit");
+    const swatches = document.getElementById("avatar-swatches");
+
+    function updateSubmitState() {
+      const ready = nameInput.value.trim().length > 0;
+      submitBtn.disabled = !ready;
+      submitBtn.style.opacity = ready ? "1" : "0.5";
+    }
+
+    nameInput.addEventListener("input", updateSubmitState);
+    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !submitBtn.disabled) submitLogin(); });
+
+    swatches.addEventListener("click", (e) => {
+      const el = e.target.closest(".avatar-swatch");
+      if (!el) return;
+      selectedColor = el.getAttribute("data-color");
+      [...swatches.children].forEach((c) => c.classList.remove("selected"));
+      el.classList.add("selected");
+    });
+
+    submitBtn.addEventListener("click", submitLogin);
+    nameInput.focus();
+
+    function submitLogin() {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      const user = { name, color: selectedColor, createdAt: new Date().toISOString() };
+      saveUser(user);
+      state.user = user;
+      startApp();
+    }
+  }
+
+  function renderUserChip() {
+    if (!state.user) return "";
+    return `
+      <div class="user-chip" data-view="settings" title="Ir para configurações">
+        <div class="avatar-circle" style="background:${state.user.color}">${initials(state.user.name)}</div>
+        <span class="hidden lg:inline text-sm font-medium text-zinc-200 max-w-[110px] truncate">${escapeHtml(state.user.name)}</span>
+      </div>`;
+  }
+
   function renderSidebar() {
     const items = [
       { id: "dashboard", label: "Dashboard", icon: "layout-dashboard" },
@@ -260,6 +371,7 @@
           </div>
         </div>
       </div>
+      <div class="pl-3 flex-shrink-0">${renderUserChip()}</div>
     `;
     updateHeaderProgress();
   }
@@ -300,7 +412,7 @@
     document.getElementById("main-content").innerHTML = `
       <div class="fade-in">
         <div class="mb-6">
-          <h2 class="text-2xl font-extrabold tracking-tight">Visão geral</h2>
+          <h2 class="text-2xl font-extrabold tracking-tight">Olá, ${escapeHtml(state.user ? state.user.name : "estudante")} 👋</h2>
           <p class="text-sm text-zinc-500 mt-1">Acompanhe seu progresso rumo ao ENEM.</p>
         </div>
 
@@ -626,6 +738,18 @@
         </div>
 
         <div class="glass rounded-2xl p-5 mb-5">
+          <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-purple-300"></i>Perfil</h3>
+          <div class="flex items-center gap-4">
+            <div class="avatar-circle !w-12 !h-12 !text-base" style="background:${state.user ? state.user.color : "#7C3AED"}">${state.user ? initials(state.user.name) : "?"}</div>
+            <div class="flex-1">
+              <div class="font-semibold text-sm">${state.user ? escapeHtml(state.user.name) : "Convidado"}</div>
+              <div class="text-xs text-zinc-500 mt-0.5">Perfil salvo neste navegador</div>
+            </div>
+            <button id="btn-logout" class="btn-ghost rounded-xl px-3 py-2 text-xs flex items-center gap-1.5"><i data-lucide="log-out" class="w-3.5 h-3.5"></i>Trocar de perfil</button>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5 mb-5">
           <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i data-lucide="database" class="w-4 h-4 text-purple-300"></i>Dados de progresso</h3>
           <div class="flex flex-wrap gap-3">
             <button id="btn-export" class="btn-primary rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i>Exportar progresso (JSON)</button>
@@ -633,6 +757,15 @@
             <input type="file" id="file-import" accept="application/json" class="hidden" />
             <button id="btn-reset" class="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2 border border-red-500/30 text-red-300 hover:bg-red-500/10 transition-colors"><i data-lucide="trash-2" class="w-4 h-4"></i>Resetar progresso</button>
           </div>
+        </div>
+
+        <div id="install-app-card" class="${state.deferredInstallPrompt ? "" : "hidden"} glass glass-hover rounded-2xl p-5 mb-5 flex items-center gap-4">
+          <div class="icon-box !w-12 !h-12"><i data-lucide="smartphone" class="w-5 h-5 text-purple-300"></i></div>
+          <div class="flex-1">
+            <div class="font-bold text-sm">Instalar StudyPro</div>
+            <div class="text-xs text-zinc-500 mt-0.5">Adicione o app à sua tela inicial e use offline.</div>
+          </div>
+          <button id="btn-install-app" class="btn-primary rounded-xl px-4 py-2 text-xs flex-shrink-0">Instalar</button>
         </div>
 
         <div class="glass rounded-2xl p-5 mb-5">
@@ -660,6 +793,14 @@
       "Resetar progresso",
       "Isso apagará todo o seu progresso salvo, favoritos e streak. Essa ação não pode ser desfeita. Deseja continuar?",
       resetProgress
+    ));
+    const installBtn = document.getElementById("btn-install-app");
+    if (installBtn) installBtn.addEventListener("click", triggerInstallPrompt);
+
+    document.getElementById("btn-logout").addEventListener("click", () => openConfirmModal(
+      "Trocar de perfil",
+      "Você poderá inserir outro nome de exibição. Seu progresso de estudos não será apagado.",
+      logoutUser
     ));
   }
 
@@ -877,9 +1018,49 @@
     document.getElementById("main-content").scrollTo({ top: 0 });
   }
 
+  /* ------------------------------ PWA: instalação e offline ------------------------------ */
+  function registerServiceWorker() {
+    if (!("serviceWorker" in navigator)) return;
+    const okProtocol = location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    if (!okProtocol) return; // service workers exigem HTTPS (ou localhost); não funcionam em file://
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch((err) => console.warn("Falha ao registrar service worker:", err));
+    });
+  }
+
+  function setupInstallPrompt() {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      state.deferredInstallPrompt = e;
+      const card = document.getElementById("install-app-card");
+      if (card) card.classList.remove("hidden");
+    });
+    window.addEventListener("appinstalled", () => {
+      state.deferredInstallPrompt = null;
+      toast("StudyPro instalado com sucesso!", "success");
+      const card = document.getElementById("install-app-card");
+      if (card) card.classList.add("hidden");
+    });
+  }
+
+  async function triggerInstallPrompt() {
+    if (!state.deferredInstallPrompt) return;
+    state.deferredInstallPrompt.prompt();
+    await state.deferredInstallPrompt.userChoice;
+    state.deferredInstallPrompt = null;
+    const card = document.getElementById("install-app-card");
+    if (card) card.classList.add("hidden");
+  }
+
   /* ----------------------------------- Init -------------------------------------- */
-  function init() {
-    document.title = "StudyPro - Melhore o seu estudo";
+  let bootstrapped = false;
+
+  function startApp() {
+    const appEl = document.getElementById("app");
+    if (appEl) appEl.style.display = "";
+    const loginRoot = document.getElementById("login-root");
+    if (loginRoot) loginRoot.innerHTML = "";
+
     state.subjects = loadSubjects();
     loadUi();
     localStorage.setItem(LS_LAST_ACCESS, todayISO());
@@ -887,8 +1068,26 @@
     renderSidebar();
     renderHeaderStatic();
     renderMainContent();
-    setupEvents();
+
+    if (!bootstrapped) {
+      bootstrapped = true;
+      setupEvents();
+      setupInstallPrompt();
+      registerServiceWorker();
+    }
     if (window.lucide) lucide.createIcons();
+  }
+
+  function init() {
+    document.title = "StudyPro - Melhore o seu estudo";
+    const existingUser = loadUser();
+    if (existingUser) {
+      state.user = existingUser;
+      startApp();
+    } else {
+      renderLoginScreen();
+      if (window.lucide) lucide.createIcons();
+    }
   }
 
   document.addEventListener("DOMContentLoaded", init);
