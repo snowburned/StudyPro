@@ -8,6 +8,10 @@
   "use strict";
 
   /* ---------------------------- Constantes ------------------------------ */
+  // Login/cadastro aqui é só de fachada (front-end): os dados ficam salvos
+  // no localStorage do navegador, sem servidor, sem banco de dados e sem
+  // verificação real de senha. Serve para o layout/fluxo da tela, não é uma
+  // autenticação de verdade.
   const LS_SUBJECTS = "studypro_subjects_v1";
   const LS_STREAK = "studypro_streak_v1";
   const LS_UI = "studypro_ui_v1";
@@ -78,7 +82,12 @@
     setTimeout(() => { el.style.opacity = "0"; el.style.transform = "translateY(8px)"; el.style.transition = "all .3s ease"; setTimeout(() => el.remove(), 320); }, 2600);
   }
 
-  /* --------------------------- Perfil (login local) ----------------------------- */
+  /* --------------------------- Autenticação (fake / só front-end) ----------------------------- */
+  // Não existe backend nem verificação real de senha aqui. O cadastro só
+  // guarda nome, e-mail e cor no localStorage; a senha digitada nunca é
+  // salva em lugar nenhum, e o "login" apenas confere se o e-mail bate com
+  // o perfil salvo neste mesmo navegador. É só para dar o fluxo/layout de
+  // login e cadastro — não protege nada de verdade.
   function loadUser() {
     try {
       const raw = localStorage.getItem(LS_USER);
@@ -92,8 +101,24 @@
     catch (e) { console.warn("Falha ao salvar perfil:", e); }
   }
 
+  // Simula um cadastro: cria o perfil local. Não guarda a senha.
+  function signup({ name, email, color }) {
+    const user = { id: "local", name, email, color, createdAt: new Date().toISOString() };
+    saveUser(user);
+    return Promise.resolve(user);
+  }
+
+  // Simula um login: só confere se já existe um perfil salvo com esse e-mail
+  // neste navegador. Não valida a senha de verdade.
+  function login({ email }) {
+    const existing = loadUser();
+    if (existing && existing.email.toLowerCase() === email.toLowerCase()) {
+      return Promise.resolve(existing);
+    }
+    return Promise.reject(new Error("Nenhuma conta encontrada com este e-mail neste navegador. Cadastre-se primeiro."));
+  }
+
   function logoutUser() {
-    localStorage.removeItem(LS_USER);
     state.user = null;
     state.view = "dashboard";
     document.getElementById("app").style.display = "none";
@@ -222,72 +247,130 @@
 
   /* ------------------------------ Renderização ----------------------------- */
 
-  /* ------------------------------ Tela de login ------------------------------ */
+  /* ------------------------------ Tela de login / cadastro ------------------------------ */
   function renderLoginScreen() {
+    let mode = "login"; // "login" | "signup"
     let selectedColor = AVATAR_COLORS[0];
     const root = document.getElementById("login-root");
-    root.innerHTML = `
-      <div class="login-shell fade-in">
-        <div class="glass login-card rounded-3xl pop">
-          <div class="flex flex-col items-center text-center mb-7">
-            <img src="favicon.svg" alt="StudyPro" class="w-14 h-14 rounded-2xl mb-4" />
-            <h1 class="text-xl font-extrabold brand-gradient-text">StudyPro</h1>
-            <p class="text-xs text-zinc-500 mt-1">Melhore o seu estudo</p>
+
+    function render() {
+      root.innerHTML = `
+        <div class="login-shell fade-in">
+          <div class="glass login-card rounded-3xl pop">
+            <div class="flex flex-col items-center text-center mb-7">
+              <img src="favicon.svg" alt="StudyPro" class="w-14 h-14 rounded-2xl mb-4" />
+              <h1 class="text-xl font-extrabold brand-gradient-text">StudyPro</h1>
+              <p class="text-xs text-zinc-500 mt-1">Melhore o seu estudo</p>
+            </div>
+
+            <div id="auth-error" class="hidden mb-4 text-xs text-red-300 bg-red-500/10 border border-red-500/25 rounded-xl px-3 py-2"></div>
+
+            <form id="auth-form" autocomplete="on">
+              ${mode === "signup" ? `
+                <label class="text-xs font-semibold text-zinc-400 mb-2 block">Nome</label>
+                <input id="auth-name" type="text" maxlength="60" placeholder="Seu nome"
+                  class="input-search w-full rounded-xl px-4 py-3 text-sm mb-4" autocomplete="name" />
+              ` : ""}
+
+              <label class="text-xs font-semibold text-zinc-400 mb-2 block">E-mail</label>
+              <input id="auth-email" type="email" placeholder="voce@exemplo.com"
+                class="input-search w-full rounded-xl px-4 py-3 text-sm mb-4" autocomplete="email" />
+
+              <label class="text-xs font-semibold text-zinc-400 mb-2 block">Senha</label>
+              <input id="auth-password" type="password" placeholder="${mode === "signup" ? "Mínimo 8 caracteres" : "Sua senha"}"
+                class="input-search w-full rounded-xl px-4 py-3 text-sm ${mode === "signup" ? "mb-5" : "mb-7"}"
+                autocomplete="${mode === "signup" ? "new-password" : "current-password"}" />
+
+              ${mode === "signup" ? `
+                <label class="text-xs font-semibold text-zinc-400 mb-3 block">Escolha uma cor para seu avatar</label>
+                <div id="avatar-swatches" class="flex items-center gap-3 mb-7 flex-wrap">
+                  ${AVATAR_COLORS.map((c, i) => `
+                    <div class="avatar-swatch ${c === selectedColor ? "selected" : ""}" data-color="${c}" style="background:${c}"></div>
+                  `).join("")}
+                </div>
+              ` : ""}
+
+              <button id="auth-submit" type="submit" class="btn-primary rounded-xl px-4 py-3 text-sm w-full flex items-center justify-center gap-2">
+                <i data-lucide="${mode === "signup" ? "user-plus" : "arrow-right"}" class="w-4 h-4"></i>
+                <span>${mode === "signup" ? "Criar conta" : "Entrar"}</span>
+              </button>
+            </form>
+
+            <button id="auth-toggle-mode" class="text-[12px] text-zinc-400 hover:text-purple-300 text-center mt-5 w-full transition-colors">
+              ${mode === "signup" ? "Já tem uma conta? <span class=\"text-purple-300 font-semibold\">Entrar</span>" : "Ainda não tem conta? <span class=\"text-purple-300 font-semibold\">Cadastre-se</span>"}
+            </button>
+            <p class="text-[11px] text-zinc-600 text-center mt-4">Seus dados ficam salvos apenas neste navegador.</p>
           </div>
-
-          <label class="text-xs font-semibold text-zinc-400 mb-2 block">Como podemos te chamar?</label>
-          <input id="login-name-input" type="text" maxlength="30" placeholder="Digite seu nome ou apelido"
-            class="input-search w-full rounded-xl px-4 py-3 text-sm mb-5" autocomplete="off" />
-
-          <label class="text-xs font-semibold text-zinc-400 mb-3 block">Escolha uma cor para seu avatar</label>
-          <div id="avatar-swatches" class="flex items-center gap-3 mb-7 flex-wrap">
-            ${AVATAR_COLORS.map((c, i) => `
-              <div class="avatar-swatch ${i === 0 ? "selected" : ""}" data-color="${c}" style="background:${c}"></div>
-            `).join("")}
-          </div>
-
-          <button id="login-submit" class="btn-primary rounded-xl px-4 py-3 text-sm w-full flex items-center justify-center gap-2" disabled style="opacity:0.5">
-            <i data-lucide="arrow-right" class="w-4 h-4"></i>
-            Começar a estudar
-          </button>
-          <p class="text-[11px] text-zinc-600 text-center mt-4">Seus dados ficam salvos apenas neste navegador.</p>
         </div>
-      </div>
-    `;
-    if (window.lucide) lucide.createIcons();
-
-    const nameInput = document.getElementById("login-name-input");
-    const submitBtn = document.getElementById("login-submit");
-    const swatches = document.getElementById("avatar-swatches");
-
-    function updateSubmitState() {
-      const ready = nameInput.value.trim().length > 0;
-      submitBtn.disabled = !ready;
-      submitBtn.style.opacity = ready ? "1" : "0.5";
+      `;
+      if (window.lucide) lucide.createIcons();
+      bind();
     }
 
-    nameInput.addEventListener("input", updateSubmitState);
-    nameInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && !submitBtn.disabled) submitLogin(); });
-
-    swatches.addEventListener("click", (e) => {
-      const el = e.target.closest(".avatar-swatch");
-      if (!el) return;
-      selectedColor = el.getAttribute("data-color");
-      [...swatches.children].forEach((c) => c.classList.remove("selected"));
-      el.classList.add("selected");
-    });
-
-    submitBtn.addEventListener("click", submitLogin);
-    nameInput.focus();
-
-    function submitLogin() {
-      const name = nameInput.value.trim();
-      if (!name) return;
-      const user = { name, color: selectedColor, createdAt: new Date().toISOString() };
-      saveUser(user);
-      state.user = user;
-      startApp();
+    function showError(msg) {
+      const el = document.getElementById("auth-error");
+      el.textContent = msg;
+      el.classList.remove("hidden");
     }
+
+    function setLoading(loading) {
+      const btn = document.getElementById("auth-submit");
+      btn.disabled = loading;
+      btn.style.opacity = loading ? "0.6" : "1";
+    }
+
+    function bind() {
+      const form = document.getElementById("auth-form");
+      const toggleBtn = document.getElementById("auth-toggle-mode");
+      const swatches = document.getElementById("avatar-swatches");
+
+      if (swatches) {
+        swatches.addEventListener("click", (e) => {
+          const el = e.target.closest(".avatar-swatch");
+          if (!el) return;
+          selectedColor = el.getAttribute("data-color");
+          [...swatches.children].forEach((c) => c.classList.remove("selected"));
+          el.classList.add("selected");
+        });
+      }
+
+      toggleBtn.addEventListener("click", () => {
+        mode = mode === "signup" ? "login" : "signup";
+        render();
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("auth-email").value.trim();
+        const password = document.getElementById("auth-password").value;
+
+        if (!email || !password) { showError("Preencha e-mail e senha."); return; }
+
+        setLoading(true);
+        try {
+          let user;
+          if (mode === "signup") {
+            const name = document.getElementById("auth-name").value.trim();
+            if (!name) { showError("Informe seu nome."); setLoading(false); return; }
+            if (password.length < 8) { showError("A senha deve ter pelo menos 8 caracteres."); setLoading(false); return; }
+            user = await signup({ name, email, password, color: selectedColor });
+            toast("Conta criada com sucesso!", "success");
+          } else {
+            user = await login({ email, password });
+          }
+          state.user = user;
+          startApp();
+        } catch (err) {
+          showError(err.message || "Não foi possível concluir. Tente novamente.");
+          setLoading(false);
+        }
+      });
+
+      const emailInput = document.getElementById("auth-email");
+      if (emailInput) emailInput.focus();
+    }
+
+    render();
   }
 
   function renderUserChip() {
@@ -743,9 +826,9 @@
             <div class="avatar-circle !w-12 !h-12 !text-base" style="background:${state.user ? state.user.color : "#7C3AED"}">${state.user ? initials(state.user.name) : "?"}</div>
             <div class="flex-1">
               <div class="font-semibold text-sm">${state.user ? escapeHtml(state.user.name) : "Convidado"}</div>
-              <div class="text-xs text-zinc-500 mt-0.5">Perfil salvo neste navegador</div>
+              <div class="text-xs text-zinc-500 mt-0.5">${state.user ? escapeHtml(state.user.email) : "Sem sessão"}</div>
             </div>
-            <button id="btn-logout" class="btn-ghost rounded-xl px-3 py-2 text-xs flex items-center gap-1.5"><i data-lucide="log-out" class="w-3.5 h-3.5"></i>Trocar de perfil</button>
+            <button id="btn-logout" class="btn-ghost rounded-xl px-3 py-2 text-xs flex items-center gap-1.5"><i data-lucide="log-out" class="w-3.5 h-3.5"></i>Sair</button>
           </div>
         </div>
 
@@ -798,8 +881,8 @@
     if (installBtn) installBtn.addEventListener("click", triggerInstallPrompt);
 
     document.getElementById("btn-logout").addEventListener("click", () => openConfirmModal(
-      "Trocar de perfil",
-      "Você poderá inserir outro nome de exibição. Seu progresso de estudos não será apagado.",
+      "Sair da conta",
+      "Você precisará entrar novamente com seu e-mail e senha. Seu progresso de estudos fica salvo neste navegador.",
       logoutUser
     ));
   }
