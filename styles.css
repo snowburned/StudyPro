@@ -11,6 +11,19 @@
   --text-muted: #71717A;
   --green: #22C55E;
   --glow: rgba(168,85,247,0.25);
+
+  /* ---- Variáveis de tema (personalização do dashboard) ---- */
+  --glass-1: rgba(255,255,255,0.045);
+  --glass-2: rgba(255,255,255,0.015);
+  --solid-bg: rgba(15,15,19,0.85);
+  --input-bg: rgba(255,255,255,0.03);
+  --header-bg: rgba(9,9,11,0.7);
+  --sidebar-bg: rgba(11,11,14,0.92);
+  --tint-1: rgba(124,58,237,0.16);
+  --tint-2: rgba(168,85,247,0.10);
+  --tint-3: rgba(49,46,129,0.20);
+  --scrollbar-thumb: rgba(168,85,247,0.25);
+  --scrollbar-thumb-hover: rgba(168,85,247,0.45);
 }
 
 *{ box-sizing: border-box; }
@@ -26,16 +39,17 @@ html, body{
 body{
   min-height: 100vh;
   background-image:
-    radial-gradient(circle at 12% 8%, rgba(124,58,237,0.16) 0%, transparent 40%),
-    radial-gradient(circle at 85% 15%, rgba(168,85,247,0.10) 0%, transparent 45%),
-    radial-gradient(circle at 50% 100%, rgba(49,46,129,0.20) 0%, transparent 50%);
+    radial-gradient(circle at 12% 8%, var(--tint-1) 0%, transparent 40%),
+    radial-gradient(circle at 85% 15%, var(--tint-2) 0%, transparent 45%),
+    radial-gradient(circle at 50% 100%, var(--tint-3) 0%, transparent 50%);
   background-attachment: fixed;
+  transition: background-color .35s ease;
 }
 
 ::-webkit-scrollbar{ width: 8px; height: 8px; }
 ::-webkit-scrollbar-track{ background: transparent; }
-::-webkit-scrollbar-thumb{ background: rgba(168,85,247,0.25); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover{ background: rgba(168,85,247,0.45); }
+::-webkit-scrollbar-thumb{ background: var(--scrollbar-thumb); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover{ background: var(--scrollbar-thumb-hover); }
 
 .brand-gradient-text{
   background: linear-gradient(90deg, var(--purple-1), var(--purple-2) 55%, #C4B5FD);
@@ -53,7 +67,7 @@ body{
 
 /* Glass card */
 .glass{
-  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.015));
+  background: linear-gradient(180deg, var(--glass-1), var(--glass-2));
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border: 1px solid var(--border);
@@ -62,12 +76,12 @@ body{
 }
 .glass-hover:hover{
   border-color: var(--border-strong);
-  box-shadow: 0 0 0 1px rgba(168,85,247,0.12), 0 12px 40px -12px var(--glow);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--purple-2) 12%, transparent), 0 12px 40px -12px var(--glow);
   transform: translateY(-2px);
 }
 
 .glass-solid{
-  background: rgba(15,15,19,0.85);
+  background: var(--solid-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border);
@@ -90,13 +104,13 @@ body{
 }
 .nav-item:hover{
   color: var(--text-primary);
-  background: rgba(168,85,247,0.08);
-  border-color: rgba(168,85,247,0.15);
+  background: color-mix(in srgb, var(--purple-2) 8%, transparent);
+  border-color: color-mix(in srgb, var(--purple-2) 15%, transparent);
 }
 .nav-item.active{
   color: #fff;
-  background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(168,85,247,0.12));
-  border-color: rgba(168,85,247,0.4);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple-1) 35%, transparent), color-mix(in srgb, var(--purple-2) 12%, transparent));
+  border-color: color-mix(in srgb, var(--purple-2) 40%, transparent);
   box-shadow: 0 4px 20px -6px var(--glow);
 }
 .nav-item.active .nav-icon{ color: #C4B5FD; }
@@ -142,13 +156,13 @@ body{
   transition: all .2s ease;
   background: rgba(255,255,255,0.02);
 }
-.check-box:hover{ border-color: var(--purple-2); box-shadow: 0 0 0 3px rgba(168,85,247,0.15); }
+.check-box:hover{ border-color: var(--purple-2); box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple-2) 15%, transparent); }
 .check-box.checked{
   background: linear-gradient(135deg, #22C55E, #16A34A);
   border-color: #22C55E;
 }
 .check-box.indeterminate{
-  background: linear-gradient(135deg, rgba(168,85,247,0.5), rgba(124,58,237,0.5));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple-2) 50%, transparent), color-mix(in srgb, var(--purple-1) 50%, transparent));
   border-color: var(--purple-2);
 }
 .check-box svg{ width: 13px; height: 13px; color: #06110A; }
@@ -214,19 +228,19 @@ body{
   color: #fff;
   font-weight: 600;
   transition: all .25s ease;
-  box-shadow: 0 4px 16px -4px rgba(168,85,247,0.5);
+  box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--purple-2) 50%, transparent);
 }
-.btn-primary:hover{ box-shadow: 0 6px 24px -4px rgba(168,85,247,0.7); transform: translateY(-1px); }
+.btn-primary:hover{ box-shadow: 0 6px 24px -4px color-mix(in srgb, var(--purple-2) 70%, transparent); transform: translateY(-1px); }
 .btn-ghost{
   background: rgba(255,255,255,0.03);
   border: 1px solid var(--border);
   color: var(--text-secondary);
   transition: all .2s ease;
 }
-.btn-ghost:hover{ background: rgba(168,85,247,0.1); border-color: var(--border-strong); color: #fff; }
+.btn-ghost:hover{ background: color-mix(in srgb, var(--purple-2) 10%, transparent); border-color: var(--border-strong); color: #fff; }
 
 .input-search{
-  background: rgba(255,255,255,0.03);
+  background: var(--input-bg);
   border: 1px solid var(--border);
   color: var(--text-primary);
   transition: all .25s ease;
@@ -234,7 +248,7 @@ body{
 .input-search:focus{
   outline: none;
   border-color: var(--purple-2);
-  box-shadow: 0 0 0 3px rgba(168,85,247,0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple-2) 15%, transparent);
   background: rgba(255,255,255,0.05);
 }
 .input-search::placeholder{ color: var(--text-muted); }
@@ -252,13 +266,13 @@ body{
 }
 .filter-chip:hover{ border-color: var(--border-strong); color: #fff; }
 .filter-chip.active{
-  background: linear-gradient(135deg, rgba(124,58,237,0.9), rgba(168,85,247,0.75));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple-1) 90%, transparent), color-mix(in srgb, var(--purple-2) 75%, transparent));
   border-color: transparent;
   color: #fff;
 }
 
 mark{
-  background: rgba(168,85,247,0.35);
+  background: color-mix(in srgb, var(--purple-2) 35%, transparent);
   color: #fff;
   border-radius: 3px;
   padding: 0 2px;
@@ -274,8 +288,8 @@ mark{
   width: 38px; height: 38px;
   border-radius: 11px;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, rgba(124,58,237,0.35), rgba(168,85,247,0.15));
-  border: 1px solid rgba(168,85,247,0.3);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--purple-1) 35%, transparent), color-mix(in srgb, var(--purple-2) 15%, transparent));
+  border: 1px solid color-mix(in srgb, var(--purple-2) 30%, transparent);
   flex-shrink: 0;
 }
 
@@ -322,7 +336,7 @@ mark{
 .avatar-swatch:hover{ transform: scale(1.08); }
 .avatar-swatch.selected{
   border-color: #fff;
-  box-shadow: 0 0 0 3px rgba(168,85,247,0.35);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--purple-2) 35%, transparent);
 }
 .avatar-swatch.selected::after{
   content: '✓';
@@ -350,4 +364,25 @@ mark{
   cursor: pointer;
   transition: all .2s ease;
 }
-.user-chip:hover{ border-color: var(--border-strong); background: rgba(168,85,247,0.08); }
+.user-chip:hover{ border-color: var(--border-strong); background: color-mix(in srgb, var(--purple-2) 8%, transparent); }
+
+/* ---- Superfícies que reagem ao tema (header/sidebar) ---- */
+.app-header-bg{ background: var(--header-bg); }
+.app-sidebar-bg{ background: var(--sidebar-bg); }
+
+/* ---------------------------- Tema claro (Branco) ---------------------------- */
+/* As classes utilitárias abaixo (Tailwind) têm cor fixa por padrão; quando o
+   tema "Branco" está ativo, sobrescrevemos as mais usadas no app para manter
+   contraste e legibilidade em fundo claro. */
+html[data-theme="light"] .text-zinc-100,
+html[data-theme="light"] .text-zinc-200{ color: #18181B; }
+html[data-theme="light"] .text-zinc-300{ color: #27272A; }
+html[data-theme="light"] .text-zinc-400{ color: #52525B; }
+html[data-theme="light"] .text-zinc-500{ color: #71717A; }
+html[data-theme="light"] .text-zinc-600{ color: #A1A1AA; }
+html[data-theme="light"] .border-white\/5{ border-color: rgba(0,0,0,0.06); }
+html[data-theme="light"] .border-white\/10{ border-color: rgba(0,0,0,0.08); }
+html[data-theme="light"] .bg-white\/5{ background-color: rgba(0,0,0,0.04); }
+html[data-theme="light"] .bg-black\/60{ background-color: rgba(0,0,0,0.35); }
+html[data-theme="light"] ::-webkit-scrollbar-track{ background: transparent; }
+html[data-theme="light"] mark{ color: #18181B; }

@@ -20,6 +20,53 @@
 
   const AVATAR_COLORS = ["#7C3AED", "#A855F7", "#22C55E", "#F59E0B", "#EC4899", "#3B82F6", "#EF4444", "#14B8A6"];
 
+  // --------- Personalização do dashboard (tema + cor de destaque) ---------
+  // Tudo salvo no localStorage (não há backend neste app). O tema "roxo" é
+  // o padrão do site e não muda o comportamento de nada além das cores.
+  const LS_THEME = "studypro_theme_v1";
+
+  const THEME_PRESETS = [
+    { id: "roxo", label: "Roxo", swatch: "#7C3AED", isLight: false,
+      c1: "#7C3AED", c2: "#A855F7", c3: "#312E81",
+      bg: "#09090B", bgElevated: "#0F0F13",
+      text1: "#F4F4F5", text2: "#A1A1AA", text3: "#71717A",
+      border: "rgba(255,255,255,0.08)" },
+    { id: "preto", label: "Preto", swatch: "#52525B", isLight: false,
+      c1: "#71717A", c2: "#A1A1AA", c3: "#27272A",
+      bg: "#000000", bgElevated: "#0A0A0A",
+      text1: "#FAFAFA", text2: "#A3A3A3", text3: "#737373",
+      border: "rgba(255,255,255,0.07)" },
+    { id: "rosa", label: "Rosa", swatch: "#EC4899", isLight: false,
+      c1: "#DB2777", c2: "#EC4899", c3: "#831843",
+      bg: "#09090B", bgElevated: "#0F0F13",
+      text1: "#F4F4F5", text2: "#A1A1AA", text3: "#71717A",
+      border: "rgba(255,255,255,0.08)" },
+    { id: "vermelho", label: "Vermelho", swatch: "#EF4444", isLight: false,
+      c1: "#DC2626", c2: "#EF4444", c3: "#7F1D1D",
+      bg: "#09090B", bgElevated: "#0F0F13",
+      text1: "#F4F4F5", text2: "#A1A1AA", text3: "#71717A",
+      border: "rgba(255,255,255,0.08)" },
+    { id: "azul", label: "Azul", swatch: "#3B82F6", isLight: false,
+      c1: "#2563EB", c2: "#3B82F6", c3: "#1E3A8A",
+      bg: "#09090B", bgElevated: "#0F0F13",
+      text1: "#F4F4F5", text2: "#A1A1AA", text3: "#71717A",
+      border: "rgba(255,255,255,0.08)" },
+    { id: "branco", label: "Branco", swatch: "#FFFFFF", isLight: true,
+      c1: "#7C3AED", c2: "#A855F7", c3: "#312E81",
+      bg: "#F4F4F6", bgElevated: "#FFFFFF",
+      text1: "#18181B", text2: "#52525B", text3: "#71717A",
+      border: "rgba(0,0,0,0.08)" },
+  ];
+
+  const ACCENT_PRESETS = [
+    { id: "roxo", label: "Roxo", c1: "#7C3AED", c2: "#A855F7", c3: "#312E81" },
+    { id: "rosa", label: "Rosa", c1: "#DB2777", c2: "#EC4899", c3: "#831843" },
+    { id: "vermelho", label: "Vermelho", c1: "#DC2626", c2: "#EF4444", c3: "#7F1D1D" },
+    { id: "azul", label: "Azul", c1: "#2563EB", c2: "#3B82F6", c3: "#1E3A8A" },
+    { id: "verde", label: "Verde", c1: "#16A34A", c2: "#22C55E", c3: "#14532D" },
+    { id: "laranja", label: "Laranja", c1: "#EA580C", c2: "#F97316", c3: "#7C2D12" },
+  ];
+
   const SUBJECT_ICONS = {
     "Sigma": "sigma", "Atom": "atom", "FlaskConical": "flask-conical", "Dna": "dna",
     "Landmark": "landmark", "Globe": "globe", "BrainCircuit": "brain-circuit",
@@ -70,6 +117,105 @@
   }
 
   function deepClone(obj) { return JSON.parse(JSON.stringify(obj)); }
+
+  /* ------------------------- Personalização (tema) ------------------------ */
+  function loadThemePrefs() {
+    try {
+      const raw = localStorage.getItem(LS_THEME);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (THEME_PRESETS.some((t) => t.id === parsed.theme)) return parsed;
+      }
+    } catch (e) { /* noop */ }
+    return { theme: "roxo", accent: null };
+  }
+
+  function saveThemePrefs(prefs) {
+    try { localStorage.setItem(LS_THEME, JSON.stringify(prefs)); }
+    catch (e) { console.warn("Falha ao salvar tema:", e); }
+  }
+
+  function hexToRgb(hex) {
+    const clean = hex.replace("#", "");
+    const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean;
+    const n = parseInt(full, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+  }
+
+  function rgbaFromHex(hex, alpha) {
+    const { r, g, b } = hexToRgb(hex);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  let themePrefs = loadThemePrefs();
+
+  // Aplica as variáveis CSS de tema/cor de destaque no <html>. Chamado no
+  // carregamento (antes até da tela de login) e sempre que o usuário troca
+  // o tema ou a cor de destaque nas Configurações.
+  function applyTheme(prefs) {
+    const theme = THEME_PRESETS.find((t) => t.id === prefs.theme) || THEME_PRESETS[0];
+    const accent = prefs.accent ? ACCENT_PRESETS.find((a) => a.id === prefs.accent) : null;
+    const c1 = accent ? accent.c1 : theme.c1;
+    const c2 = accent ? accent.c2 : theme.c2;
+    const c3 = accent ? accent.c3 : theme.c3;
+
+    const root = document.documentElement.style;
+    root.setProperty("--purple-1", c1);
+    root.setProperty("--purple-2", c2);
+    root.setProperty("--purple-3", c3);
+    root.setProperty("--border-strong", rgbaFromHex(c2, 0.35));
+    root.setProperty("--glow", rgbaFromHex(c2, 0.25));
+    root.setProperty("--scrollbar-thumb", rgbaFromHex(c2, 0.25));
+    root.setProperty("--scrollbar-thumb-hover", rgbaFromHex(c2, 0.45));
+
+    root.setProperty("--bg", theme.bg);
+    root.setProperty("--bg-elevated", theme.bgElevated);
+    root.setProperty("--text-primary", theme.text1);
+    root.setProperty("--text-secondary", theme.text2);
+    root.setProperty("--text-muted", theme.text3);
+    root.setProperty("--border", theme.border);
+
+    const tintAlpha = theme.id === "preto" ? [0.05, 0.03, 0.05] : theme.isLight ? [0.06, 0.045, 0.05] : [0.16, 0.10, 0.20];
+    root.setProperty("--tint-1", rgbaFromHex(c1, tintAlpha[0]));
+    root.setProperty("--tint-2", rgbaFromHex(c2, tintAlpha[1]));
+    root.setProperty("--tint-3", rgbaFromHex(c3, tintAlpha[2]));
+
+    if (theme.isLight) {
+      root.setProperty("--glass-1", "rgba(0,0,0,0.035)");
+      root.setProperty("--glass-2", "rgba(0,0,0,0.012)");
+      root.setProperty("--solid-bg", "rgba(255,255,255,0.92)");
+      root.setProperty("--input-bg", "rgba(0,0,0,0.03)");
+      root.setProperty("--header-bg", "rgba(255,255,255,0.75)");
+      root.setProperty("--sidebar-bg", "rgba(255,255,255,0.88)");
+      document.documentElement.setAttribute("data-theme", "light");
+    } else {
+      root.setProperty("--glass-1", "rgba(255,255,255,0.045)");
+      root.setProperty("--glass-2", "rgba(255,255,255,0.015)");
+      root.setProperty("--solid-bg", "rgba(15,15,19,0.85)");
+      root.setProperty("--input-bg", "rgba(255,255,255,0.03)");
+      root.setProperty("--header-bg", theme.id === "preto" ? "rgba(0,0,0,0.75)" : "rgba(9,9,11,0.7)");
+      root.setProperty("--sidebar-bg", theme.id === "preto" ? "rgba(0,0,0,0.92)" : "rgba(11,11,14,0.92)");
+      document.documentElement.removeAttribute("data-theme");
+    }
+
+    themePrefs = prefs;
+  }
+
+  function setTheme(themeId) {
+    const prefs = { ...themePrefs, theme: themeId };
+    applyTheme(prefs);
+    saveThemePrefs(prefs);
+  }
+
+  function setAccent(accentId) {
+    const prefs = { ...themePrefs, accent: accentId || null };
+    applyTheme(prefs);
+    saveThemePrefs(prefs);
+  }
+
+  // Aplica o tema salvo imediatamente — antes de renderizar login ou app —
+  // para não haver "flash" com as cores padrão.
+  applyTheme(themePrefs);
 
   function toast(message, kind) {
     const wrap = document.getElementById("toast-wrap");
@@ -965,6 +1111,39 @@
         </div>
 
         <div class="glass rounded-2xl p-5 mb-5">
+          <h3 class="font-bold text-sm mb-1 flex items-center gap-2"><i data-lucide="palette" class="w-4 h-4 text-purple-300"></i>Aparência</h3>
+          <p class="text-xs text-zinc-500 mb-4">Personalize as cores do StudyPro. Fica salvo neste navegador.</p>
+
+          <div class="mb-5">
+            <div class="text-xs font-semibold text-zinc-400 mb-3">Tema</div>
+            <div class="flex items-center gap-4 flex-wrap">
+              ${THEME_PRESETS.map((t) => `
+                <button type="button" class="flex flex-col items-center gap-1.5" data-theme-id="${t.id}" title="${t.label}">
+                  <div class="avatar-swatch ${themePrefs.theme === t.id ? "selected" : ""}" style="background:${t.swatch}; border:1.5px solid rgba(255,255,255,0.18)"></div>
+                  <span class="text-[11px] text-zinc-500">${t.label}${t.id === "roxo" ? " (padrão)" : ""}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+
+          <div>
+            <div class="text-xs font-semibold text-zinc-400 mb-3">Cor de destaque</div>
+            <div class="flex items-center gap-4 flex-wrap">
+              <button type="button" class="flex flex-col items-center gap-1.5" data-accent-id="" title="Usar a cor do tema">
+                <div class="avatar-swatch ${!themePrefs.accent ? "selected" : ""}" style="background:transparent; border:1.5px dashed rgba(255,255,255,0.35)"></div>
+                <span class="text-[11px] text-zinc-500">Do tema</span>
+              </button>
+              ${ACCENT_PRESETS.map((a) => `
+                <button type="button" class="flex flex-col items-center gap-1.5" data-accent-id="${a.id}" title="${a.label}">
+                  <div class="avatar-swatch ${themePrefs.accent === a.id ? "selected" : ""}" style="background:${a.c2}; border:1.5px solid rgba(255,255,255,0.18)"></div>
+                  <span class="text-[11px] text-zinc-500">${a.label}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5 mb-5">
           <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i data-lucide="database" class="w-4 h-4 text-purple-300"></i>Dados de progresso</h3>
           <div class="flex flex-wrap gap-3">
             <button id="btn-export" class="btn-primary rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"><i data-lucide="download" class="w-4 h-4"></i>Exportar progresso (JSON)</button>
@@ -1017,6 +1196,19 @@
       "Você precisará entrar novamente com seu e-mail e senha. Seu progresso de estudos fica salvo neste navegador.",
       logoutUser
     ));
+
+    document.querySelectorAll("[data-theme-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setTheme(btn.getAttribute("data-theme-id"));
+        renderSettings();
+      });
+    });
+    document.querySelectorAll("[data-accent-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setAccent(btn.getAttribute("data-accent-id"));
+        renderSettings();
+      });
+    });
   }
 
   /* ----------------------------------- Modal ------------------------------------ */
