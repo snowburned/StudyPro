@@ -132,6 +132,54 @@
     return parts.slice(0, 2).map((p) => p[0].toUpperCase()).join("");
   }
 
+  // Renderiza o avatar do usuário: foto (se tiver sido enviada) ou círculo
+  // com iniciais na cor escolhida. `extraClass` permite variar o tamanho
+  // (ex: "!w-24 !h-24 !text-2xl") reaproveitando o mesmo componente.
+  function avatarHtml(user, extraClass) {
+    const cls = extraClass || "";
+    if (!user) return `<div class="avatar-circle ${cls}" style="background:#7C3AED">?</div>`;
+    if (user.photo) {
+      return `<div class="avatar-circle ${cls}" style="padding:0;overflow:hidden;background:${user.color}">
+        <img src="${user.photo}" alt="Foto de perfil" class="w-full h-full object-cover rounded-full" />
+      </div>`;
+    }
+    return `<div class="avatar-circle ${cls}" style="background:${user.color}">${initials(user.name)}</div>`;
+  }
+
+  // Lê um arquivo de imagem (PNG/JPG), recorta para quadrado centralizado e
+  // redimensiona para `size`x`size`, devolvendo um data URL JPEG compacto —
+  // assim a foto cabe tranquilamente no localStorage.
+  function readImageAsAvatarDataUrl(file, size) {
+    return new Promise((resolve, reject) => {
+      if (!file) { reject(new Error("Nenhum arquivo selecionado.")); return; }
+      if (!/^image\/(png|jpe?g)$/i.test(file.type)) {
+        reject(new Error("Envie um arquivo PNG ou JPG.")); return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        reject(new Error("Imagem muito grande (máx. 5MB).")); return;
+      }
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error("Arquivo de imagem inválido."));
+        img.onload = () => {
+          const side = Math.min(img.width, img.height);
+          const sx = (img.width - side) / 2;
+          const sy = (img.height - side) / 2;
+          const canvas = document.createElement("canvas");
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+          resolve(canvas.toDataURL("image/jpeg", 0.86));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   /* --------------------------- Persistência ------------------------------ */
   function loadSubjects() {
     try {
@@ -376,8 +424,8 @@
   function renderUserChip() {
     if (!state.user) return "";
     return `
-      <div class="user-chip" data-view="settings" title="Ir para configurações">
-        <div class="avatar-circle" style="background:${state.user.color}">${initials(state.user.name)}</div>
+      <div class="user-chip" data-view="profile" title="Ir para o perfil">
+        ${avatarHtml(state.user)}
         <span class="hidden lg:inline text-sm font-medium text-zinc-200 max-w-[110px] truncate">${escapeHtml(state.user.name)}</span>
       </div>`;
   }
@@ -388,6 +436,7 @@
       { id: "subjects", label: "Matérias", icon: "book-open" },
       { id: "stats", label: "Estatísticas", icon: "bar-chart-3" },
       { id: "favorites", label: "Favoritos", icon: "star" },
+      { id: "profile", label: "Perfil", icon: "user-circle" },
       { id: "settings", label: "Configurações", icon: "settings" },
     ];
     const html = `
@@ -454,13 +503,19 @@
           </div>
         </div>
       </div>
-      <div class="pl-3 flex-shrink-0">${renderUserChip()}</div>
+      <div id="header-user-chip" class="pl-3 flex-shrink-0">${renderUserChip()}</div>
     `;
     updateHeaderProgress();
   }
 
+  function refreshHeaderUserChip() {
+    const el = document.getElementById("header-user-chip");
+    if (el) el.innerHTML = renderUserChip();
+    if (window.lucide) lucide.createIcons();
+  }
+
   function renderMainContent() {
-    const map = { dashboard: renderDashboard, subjects: renderSubjectsView, stats: renderStats, favorites: renderFavorites, settings: renderSettings };
+    const map = { dashboard: renderDashboard, subjects: renderSubjectsView, stats: renderStats, favorites: renderFavorites, profile: renderProfile, settings: renderSettings };
     (map[state.view] || renderDashboard)();
     if (window.lucide) lucide.createIcons();
   }
@@ -811,6 +866,83 @@
   }
 
   /* -------------------------------- Configurações ------------------------------- */
+  /* ------------------------------- Perfil -------------------------------- */
+  function renderProfile() {
+    const hasPhoto = !!(state.user && state.user.photo);
+    document.getElementById("main-content").innerHTML = `
+      <div class="fade-in max-w-2xl">
+        <div class="mb-6">
+          <h2 class="text-2xl font-extrabold tracking-tight">Perfil</h2>
+          <p class="text-sm text-zinc-500 mt-1">Sua foto e informações de perfil.</p>
+        </div>
+
+        <div class="glass rounded-2xl p-6 mb-5">
+          <div class="flex flex-col items-center text-center">
+            <div class="mb-5">${avatarHtml(state.user, "!w-24 !h-24 !text-2xl")}</div>
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+              <button id="btn-change-photo" class="btn-primary rounded-xl px-4 py-2.5 text-sm flex items-center gap-2">
+                <i data-lucide="image-plus" class="w-4 h-4"></i>${hasPhoto ? "Trocar foto" : "Adicionar foto"}
+              </button>
+              ${hasPhoto ? `
+                <button id="btn-remove-photo" class="btn-ghost rounded-xl px-4 py-2.5 text-sm flex items-center gap-2">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>Remover foto
+                </button>
+              ` : ""}
+            </div>
+            <input type="file" id="profile-photo-input" accept=".png,.jpg,.jpeg,image/png,image/jpeg" class="hidden" />
+            <p class="text-[11px] text-zinc-600 mt-3">PNG ou JPG, máx. 5MB. A imagem fica salva apenas neste navegador.</p>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5">
+          <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i data-lucide="id-card" class="w-4 h-4 text-purple-300"></i>Dados</h3>
+          <div class="space-y-4">
+            <div>
+              <div class="text-[11px] text-zinc-500 mb-1">Nome</div>
+              <div class="text-sm font-medium">${state.user ? escapeHtml(state.user.name) : "-"}</div>
+            </div>
+            <div>
+              <div class="text-[11px] text-zinc-500 mb-1">E-mail</div>
+              <div class="text-sm font-medium">${state.user ? escapeHtml(state.user.email) : "-"}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+
+    const input = document.getElementById("profile-photo-input");
+    document.getElementById("btn-change-photo").addEventListener("click", () => input.click());
+
+    input.addEventListener("change", async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      try {
+        const dataUrl = await readImageAsAvatarDataUrl(file, 256);
+        state.user.photo = dataUrl;
+        saveUser(state.user);
+        toast("Foto de perfil atualizada!", "success");
+        renderProfile();
+        refreshHeaderUserChip();
+      } catch (err) {
+        toast(err.message || "Não foi possível usar essa imagem.", "error");
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    const removeBtn = document.getElementById("btn-remove-photo");
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        delete state.user.photo;
+        saveUser(state.user);
+        toast("Foto removida.", "success");
+        renderProfile();
+        refreshHeaderUserChip();
+      });
+    }
+  }
+
   function renderSettings() {
     const streak = computeStreak();
     document.getElementById("main-content").innerHTML = `
@@ -823,7 +955,7 @@
         <div class="glass rounded-2xl p-5 mb-5">
           <h3 class="font-bold text-sm mb-4 flex items-center gap-2"><i data-lucide="user" class="w-4 h-4 text-purple-300"></i>Perfil</h3>
           <div class="flex items-center gap-4">
-            <div class="avatar-circle !w-12 !h-12 !text-base" style="background:${state.user ? state.user.color : "#7C3AED"}">${state.user ? initials(state.user.name) : "?"}</div>
+            ${avatarHtml(state.user, "!w-12 !h-12 !text-base")}
             <div class="flex-1">
               <div class="font-semibold text-sm">${state.user ? escapeHtml(state.user.name) : "Convidado"}</div>
               <div class="text-xs text-zinc-500 mt-0.5">${state.user ? escapeHtml(state.user.email) : "Sem sessão"}</div>
